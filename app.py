@@ -1,7 +1,6 @@
 from flask import Flask, request, send_file
 from flask_cors import CORS
-from io import BytesIO
-from fpdf import FPDF
+from utils import generate_fillable_pdf
 
 app = Flask(__name__)
 CORS(app)
@@ -11,21 +10,13 @@ def generate_pdf():
     data = request.json
     fields = data.get("fields", [])
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    y = 10
-    for field in fields:
-        label = field.get("label", "Field")
-        pdf.text(10, y, f"{label}: ______________________")
-        y += 10
-
-    buffer = BytesIO()
-    pdf.output(buffer)
-    buffer.seek(0)
-
-    return send_file(buffer, as_attachment=True, download_name="form.pdf", mimetype="application/pdf")
+    pdf_buffer = generate_fillable_pdf(fields)
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name="fillable-form.pdf",
+        mimetype="application/pdf"
+    )
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
