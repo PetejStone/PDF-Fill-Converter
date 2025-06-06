@@ -13,6 +13,9 @@ def generate_fillable_pdf(fields):
         y += 10
 
     buffer = BytesIO()
-    pdf.output(buffer)
+    pdf_output = pdf.output(dest='S').encode('latin1')
+    buffer = BytesIO(pdf_output)
+    return buffer
+
     buffer.seek(0)
     return buffer
