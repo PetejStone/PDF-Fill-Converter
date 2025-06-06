@@ -1,21 +1,39 @@
-from fpdf import FPDF
 from io import BytesIO
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from PyPDF2 import PdfReader, PdfWriter
 
 def generate_fillable_pdf(fields):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    # Step 1: Create base PDF with reportlab
+    packet = BytesIO()
+    can = canvas.Canvas(packet, pagesize=letter)
+    y = 750
 
-    y = 20
-    for field in fields:
-        label = field.get("label", "Field")
-        pdf.text(10, y, f"{label}: __________________________")
-        y += 10
+    for i, field in enumerate(fields):
+        label = field.get("label", f"Field {i+1}")
+        can.drawString(50, y, label + ":")
+        can.acroForm.textfield(
+            name=f'field_{i}',
+            tooltip=label,
+            x=150,
+            y=y - 4,
+            width=300,
+            height=20,
+            borderStyle='underlined',
+            forceBorder=True,
+        )
+        y -= 40
 
-    buffer = BytesIO()
-    pdf_output = pdf.output(dest='S').encode('latin1')
-    buffer = BytesIO(pdf_output)
-    return buffer
+    can.save()
+    packet.seek(0)
 
-    buffer.seek(0)
-    return buffer
+    # Step 2: Load with PyPDF2 and output
+    new_pdf = PdfReader(packet)
+    output = PdfWriter()
+    output.add_page(new_pdf.pages[0])
+    output.update_page_form_field_values(output.pages[0], {})
+
+    output_stream = BytesIO()
+    output.write(output_stream)
+    output_stream.seek(0)
+    return output_stream
