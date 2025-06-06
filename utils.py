@@ -47,7 +47,7 @@ def generate_fillable_pdf(fields):
             name=f'field_{i}',
             tooltip=label,
             x=x,
-            y=y,
+            y=y - 18,
             width=field_width - 5,  # small padding
             height=field_height,
             borderStyle='underlined',
