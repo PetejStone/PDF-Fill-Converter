@@ -3,7 +3,8 @@ from flask_cors import CORS
 from utils import generate_fillable_pdf
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://v9yqwg.csb.app", "https://www.stonesquareddevelopment.com/pdf-form-builder"],resources={r"/*": {"origins": "*"}})
+
 
 @app.route("/generate-pdf", methods=["POST"])
 def generate_pdf():
