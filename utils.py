@@ -6,7 +6,7 @@ def generate_fillable_pdf(fields):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
 
-    y = 10
+    y = 20
     for field in fields:
         label = field.get("label", "Field")
         pdf.text(10, y, f"{label}: __________________________")
