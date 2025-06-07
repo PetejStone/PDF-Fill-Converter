@@ -10,9 +10,9 @@ def generate_fillable_pdf(fields):
     page_width, page_height = letter
     left_margin = 50
     top_margin = 750
-    spacing_y = 50  # vertical space between rows
+    spacing_y = 50
     field_height = 20
-    label_offset = 14  # space above textfield for label
+    label_offset = 14
 
     usable_width = page_width - (2 * left_margin)
     width_map = {
@@ -28,12 +28,10 @@ def generate_fillable_pdf(fields):
 
     for i, field in enumerate(fields):
         label = field.get("label", f"Field {i+1}")
+        field_type = field.get("type", "text")
         width_key = field.get("width", "full")
         field_width = width_map.get(width_key, width_map["full"])
-        options = field.get("options", [])
-        field_type = field.get("type", "text")
 
-        # Wrap row if needed
         if current_row_width + field_width > usable_width:
             y -= row_height
             x = left_margin
@@ -41,78 +39,53 @@ def generate_fillable_pdf(fields):
 
         can.drawString(x, y + label_offset, label + ":")
 
-        if field_type in ["text", "phone", "email", "address", "date"]:
-            # Draw a textfield
-            can.acroForm.textfield(
-                name=f"field_{i}",
-                tooltip=label,
-                x=x,
-                y=y - 18,
-                width=field_width - 5,
-                height=field_height,
-                borderStyle="underlined",
-                forceBorder=True,
-            )
-        elif field_type == "message":
-            # For message, make a bigger textarea
-            textarea_height = field_height * 3
-            can.acroForm.textfield(
-                name=f"field_{i}",
-                tooltip=label,
-                x=x,
-                y=y - textarea_height,
-                width=field_width - 5,
-                height=textarea_height,
-                borderStyle="underlined",
-                forceBorder=True,
-                multiline=True,
-            )
-        elif field_type == "checkboxes":
-            # Draw checkboxes for each option horizontally spaced
-            box_size = 15
-            option_spacing = 10 + box_size  # space between checkboxes
-            start_x = x
-            for idx, opt in enumerate(options):
-                checkbox_x = start_x + idx * option_spacing
-                can.drawString(checkbox_x + box_size + 2, y + label_offset, opt)
-                can.acroForm.checkbox(
-                    name=f"field_{i}_opt_{idx}",
-                    tooltip=opt,
-                    x=checkbox_x,
-                    y=y - 18,
-                    size=box_size,
-                    borderStyle="solid",
-                    forceBorder=True,
-                )
-        elif field_type == "select":
-            # Draw radio buttons horizontally spaced
-            button_size = 15
-            option_spacing = 10 + button_size
-            start_x = x
-            group_name = f"field_{i}"
-            for idx, opt in enumerate(options):
-                radio_x = start_x + idx * option_spacing
-                can.drawString(radio_x + button_size + 2, y + label_offset, opt)
-                can.acroForm.radio(
-                    name=group_name,
-                    value=opt,
-                    x=radio_x,
-                    y=y - 18,
-                    buttonStyle="circle",
-                    borderStyle="solid",
-                    size=button_size,
-                    forceBorder=True,
-                )
+        if field_type in ["select", "checkboxes"]:
+            options = field.get("options", [])
+            option_spacing = 18
+            for j, option in enumerate(options):
+                option_y = y - (j * option_spacing)
+
+                if field_type == "checkboxes":
+                    can.acroForm.checkbox(
+                        name=f'field_{i}_option_{j}',
+                        tooltip=option,
+                        x=x,
+                        y=option_y,
+                        buttonStyle='check',
+                        borderStyle='solid',
+                        forceBorder=True,
+                        size=12,
+                    )
+                elif field_type == "select":
+                    # Group radio buttons using same name
+                    can.acroForm.radio(
+                        name=f'field_{i}',
+                        tooltip=option,
+                        value=option,
+                        x=x,
+                        y=option_y,
+                        buttonStyle='circle',
+                        borderStyle='solid',
+                        forceBorder=True,
+                        size=12,
+                    )
+
+                can.drawString(x + 18, option_y + 2, option)
+
+            # After options are rendered, move y down based on total height
+            y -= (len(options) - 1) * option_spacing
         else:
-            # fallback to textfield
+            # Default text field (including type 'message', 'email', etc.)
+            height = field_height * 3 if field_type == "message" else field_height
+
             can.acroForm.textfield(
-                name=f"field_{i}",
+                name=f'field_{i}',
                 tooltip=label,
                 x=x,
                 y=y - 18,
                 width=field_width - 5,
-                height=field_height,
-                borderStyle="underlined",
+                height=height,
+                borderStyle='underlined',
                 forceBorder=True,
             )
 
