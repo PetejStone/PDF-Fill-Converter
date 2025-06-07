@@ -25,7 +25,6 @@ def generate_fillable_pdf(fields):
     y = top_margin
     current_row_width = 0
     row_height = spacing_y
-    row_elements = []  # store element heights to normalize after row
 
     for i, field in enumerate(fields):
         label = field.get("label", f"Field {i+1}")
@@ -33,19 +32,16 @@ def generate_fillable_pdf(fields):
         width_key = field.get("width", "full")
         field_width = width_map.get(width_key, width_map["full"])
 
-        # Wrap to next row if needed
         if current_row_width + field_width > usable_width:
-            y -= max(row_elements or [spacing_y])
+            y -= row_height
             x = left_margin
             current_row_width = 0
-            row_elements = []
 
         can.drawString(x, y + label_offset, label + ":")
 
         if field_type in ["select", "checkboxes"]:
             options = field.get("options", [])
             option_spacing = 18
-            total_height = len(options) * option_spacing
             for j, option in enumerate(options):
                 option_y = y - (j * option_spacing)
 
@@ -61,12 +57,11 @@ def generate_fillable_pdf(fields):
                         size=12,
                     )
                 elif field_type == "select":
-                    # RADIO buttons - all must share same name
+                    # Group radio buttons using same name
                     can.acroForm.radio(
                         name=f'field_{i}',
                         tooltip=option,
                         value=option,
-                        selected=False,  # not selected by default
                         x=x,
                         y=option_y,
                         buttonStyle='circle',
@@ -77,11 +72,12 @@ def generate_fillable_pdf(fields):
 
                 can.drawString(x + 18, option_y + 2, option)
 
-            # Store max height used so all items in row stay level
-            row_elements.append(total_height)
+            # After options are rendered, move y down based on total height
+            y -= (len(options) - 1) * option_spacing
         else:
-            # Text field (message, phone, etc)
+            # Default text field (including type 'message', 'email', etc.)
             height = field_height * 3 if field_type == "message" else field_height
+
             can.acroForm.textfield(
                 name=f'field_{i}',
                 tooltip=label,
@@ -92,13 +88,9 @@ def generate_fillable_pdf(fields):
                 borderStyle='underlined',
                 forceBorder=True,
             )
-            row_elements.append(height + label_offset)
 
         x += field_width
         current_row_width += field_width
-
-    # Final row spacing
-    y -= max(row_elements or [spacing_y])
 
     can.save()
     packet.seek(0)
