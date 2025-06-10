@@ -3,8 +3,7 @@ from flask_cors import CORS
 from utils import generate_fillable_pdf
 
 app = Flask(__name__)
-CORS(app, origins=["https://v9yqwg.csb.app", "https://www.stonesquareddevelopment.com/pdf-form-builder"],resources={r"/*": {"origins": "*"}})
-
+CORS(app, origins=["https://v9yqwg.csb.app", "https://www.stonesquareddevelopment.com/pdf-form-builder"], resources={r"/*": {"origins": "*"}})
 
 @app.route("/generate-pdf", methods=["POST"])
 def generate_pdf():
@@ -13,7 +12,10 @@ def generate_pdf():
         print("Incoming JSON:", data)
 
         fields = data.get("fields", [])
-        pdf_buffer = generate_fillable_pdf(fields)
+        logo_url = data.get("logoUrl", None)
+        form_title = data.get("formTitle", "")
+
+        pdf_buffer = generate_fillable_pdf(fields, logo_url, form_title)
 
         return send_file(
             pdf_buffer,
