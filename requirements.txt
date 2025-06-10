@@ -5,3 +5,4 @@ reportlab
 gunicorn
 PyPDF2
 requests
+pdfrw
