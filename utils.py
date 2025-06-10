@@ -66,7 +66,7 @@ def generate_fillable_pdf(fields, logo_url=None, form_title=""):
 
         can.drawString(x, y + label_offset, label + ":")
 
-        if field_type == "checkboxes":
+        if field_type in ["select", "checkboxes"]:
             options = field.get("options", [])
             option_spacing = 18
             for j, option in enumerate(options):
@@ -78,27 +78,6 @@ def generate_fillable_pdf(fields, logo_url=None, form_title=""):
                     x=x,
                     y=option_y,
                     buttonStyle='check',
-                    borderStyle='solid',
-                    forceBorder=True,
-                    size=12,
-                )
-                can.drawString(x + 18, option_y + 2, option)
-
-            y -= (len(options) - 1) * option_spacing
-
-        elif field_type == "select":
-            options = field.get("options", [])
-            option_spacing = 18
-            for j, option in enumerate(options):
-                option_y = y - (j * option_spacing)
-
-                can.acroForm.radio(
-                    name=f'field_{i}',
-                    tooltip=option,
-                    value=option,
-                    x=x,
-                    y=option_y,
-                    buttonStyle='circle',
                     borderStyle='solid',
                     forceBorder=True,
                     size=12,
