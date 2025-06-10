@@ -55,7 +55,7 @@ def generate_fillable_pdf(fields, logo_url=None, form_title=""):
 
     for i, field in enumerate(fields):
         label = field.get("label", f"Field {i+1}")
-        field_type = field.get("type", "text").lower()  # Ensures consistency
+        field_type = field.get("dataType", field.get("type", "text")).lower()  # Ensures consistency
         width_key = field.get("width", "full")
         field_width = width_map.get(width_key, width_map["full"])
 
