@@ -1,11 +1,9 @@
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.utils import ImageReader
 from PyPDF2 import PdfReader, PdfWriter
-import requests
 
-def generate_fillable_pdf(fields, logo_url=None, form_title=""):
+def generate_fillable_pdf(fields):
     packet = BytesIO()
     can = canvas.Canvas(packet, pagesize=letter)
 
@@ -23,41 +21,18 @@ def generate_fillable_pdf(fields, logo_url=None, form_title=""):
         "third": usable_width / 3,
     }
 
-    y = page_height - 60  # Top position for drawing
-    if logo_url:
-        try:
-            response = requests.get(logo_url)
-            if response.status_code == 200:
-                logo_img = ImageReader(BytesIO(response.content))
-                logo_width = 150
-                logo_height = 50
-                can.drawImage(
-                    logo_img,
-                    (page_width - logo_width) / 2,
-                    y - logo_height,
-                    width=logo_width,
-                    height=logo_height,
-                    preserveAspectRatio=True,
-                    mask='auto'
-                )
-                y -= (logo_height + 20)
-        except Exception as e:
-            print("Logo fetch failed:", e)
-
-    if form_title:
-        can.setFont("Helvetica-Bold", 16)
-        can.drawCentredString(page_width / 2, y, form_title)
-        y -= 40
-
     x = left_margin
+    y = top_margin
     current_row_width = 0
     row_height = spacing_y
 
     for i, field in enumerate(fields):
         label = field.get("label", f"Field {i+1}")
-        field_type = field.get("type", "text").lower()  # Ensures consistency
+        field_type = field.get("type", "text").lower().strip()
         width_key = field.get("width", "full")
         field_width = width_map.get(width_key, width_map["full"])
+
+        print(f"Field {i}: type={field_type}, label={label}")  # Debug line
 
         if current_row_width + field_width > usable_width:
             y -= row_height
