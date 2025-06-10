@@ -1,9 +1,11 @@
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
 from PyPDF2 import PdfReader, PdfWriter
+import requests
 
-def generate_fillable_pdf(fields):
+def generate_fillable_pdf(fields, logo_url=None, form_title=""):
     packet = BytesIO()
     can = canvas.Canvas(packet, pagesize=letter)
 
@@ -21,8 +23,33 @@ def generate_fillable_pdf(fields):
         "third": usable_width / 3,
     }
 
+    y = page_height - 60  # Top position for drawing
+    if logo_url:
+        try:
+            response = requests.get(logo_url)
+            if response.status_code == 200:
+                logo_img = ImageReader(BytesIO(response.content))
+                logo_width = 150
+                logo_height = 50
+                can.drawImage(
+                    logo_img,
+                    (page_width - logo_width) / 2,
+                    y - logo_height,
+                    width=logo_width,
+                    height=logo_height,
+                    preserveAspectRatio=True,
+                    mask='auto'
+                )
+                y -= (logo_height + 20)
+        except Exception as e:
+            print("Logo fetch failed:", e)
+
+    if form_title:
+        can.setFont("Helvetica-Bold", 16)
+        can.drawCentredString(page_width / 2, y, form_title)
+        y -= 40
+
     x = left_margin
-    y = top_margin
     current_row_width = 0
     row_height = spacing_y
 
@@ -57,7 +84,6 @@ def generate_fillable_pdf(fields):
                         size=12,
                     )
                 elif field_type == "select":
-                    # Group radio buttons using same name
                     can.acroForm.radio(
                         name=f'field_{i}',
                         tooltip=option,
@@ -72,10 +98,8 @@ def generate_fillable_pdf(fields):
 
                 can.drawString(x + 18, option_y + 2, option)
 
-            # After options are rendered, move y down based on total height
             y -= (len(options) - 1) * option_spacing
         else:
-            # Default text field (including type 'message', 'email', etc.)
             height = field_height * 3 if field_type == "message" else field_height
 
             can.acroForm.textfield(
@@ -99,8 +123,6 @@ def generate_fillable_pdf(fields):
     output = PdfWriter()
     output.add_page(new_pdf.pages[0])
     output.update_page_form_field_values(output.pages[0], {})
-
-
 
     output_stream = BytesIO()
     output.write(output_stream)
