@@ -98,7 +98,7 @@ def generate_fillable_pdf(fields):
     new_pdf = PdfReader(packet)
     output = PdfWriter()
     output.add_page(new_pdf.pages[0])
-   output.update_page_form_field_values(output.pages[0], {})
+    output.update_page_form_field_values(output.pages[0], {})
 
 
 
