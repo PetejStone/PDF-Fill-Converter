@@ -65,6 +65,7 @@ def generate_fillable_pdf(fields, logo_url=None, form_title=""):
             current_row_width = 0
 
         if field_type == "message":
+            y -= (field_height * 2)  # Extra space before message
             can.drawString(x, y + (field_height * 3) - 4, label + ":")
         else:
             can.drawString(x, y + label_offset, label + ":")
