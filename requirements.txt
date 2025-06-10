@@ -4,3 +4,4 @@ fpdf
 reportlab
 gunicorn
 PyPDF2
+requests
