@@ -2,6 +2,7 @@ from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from PyPDF2 import PdfReader, PdfWriter
 import requests
 
@@ -26,12 +27,24 @@ def generate_fillable_pdf(fields, logo_url=None, form_title=""):
         c = canvas.Canvas(stream, pagesize=letter)
         return c, stream
 
+    def wrap_label(label_text, max_width, font_size):
+        words = label_text.split()
+        lines = []
+        current_line = ""
+        for word in words:
+            test_line = current_line + " " + word if current_line else word
+            if stringWidth(test_line, "Helvetica", font_size) <= max_width:
+                current_line = test_line
+            else:
+                lines.append(current_line)
+                current_line = word
+        if current_line:
+            lines.append(current_line)
+        return lines
+
     page_streams = []
     can, current_stream = new_canvas()
     y = page_height - 60
-    x = left_margin
-    current_row_width = 0
-    first_page = True
 
     def finalize_page():
         can.save()
@@ -66,71 +79,78 @@ def generate_fillable_pdf(fields, logo_url=None, form_title=""):
 
     draw_header()
 
-    for i, field in enumerate(fields):
-        label = field.get("label", f"Field {i+1}")
-        field_type = field.get("dataType", field.get("type", "text")).lower()
-        width_key = field.get("width", "full")
-        field_width = width_map.get(width_key, width_map["full"])
+    i = 0
+    while i < len(fields):
+        row_fields = []
+        current_row_width = 0
 
-        height = field_height * 3 if field_type == "message" else field_height
-        expected_drop = height + spacing_y
+        while i < len(fields):
+            field = fields[i]
+            width_key = field.get("width", "full")
+            field_width = width_map.get(width_key, width_map["full"])
+            if current_row_width + field_width > usable_width:
+                break
+            row_fields.append((field, field_width, i))
+            current_row_width += field_width
+            i += 1
 
-        if field_type in ["select", "checkboxes"]:
-            options = field.get("options", [])
-            expected_drop = len(options) * 18 + spacing_y
+        max_field_height = 0
+        for field, field_width, idx in row_fields:
+            field_type = field.get("dataType", field.get("type", "text")).lower()
+            height = field_height * 3 if field_type == "message" else field_height
+            if field_type in ["select", "checkboxes"]:
+                height = len(field.get("options", [])) * 18
+            max_field_height = max(max_field_height, height)
 
-        if y - expected_drop < min_y_threshold:
+        if y - (max_field_height + spacing_y) < min_y_threshold:
             finalize_page()
             can, current_stream = new_canvas()
             y = page_height - 60
-            x = left_margin
-            current_row_width = 0
             draw_header()
 
-        if current_row_width + field_width > usable_width:
-            y -= spacing_y
-            x = left_margin
-            current_row_width = 0
-
-        # Add spacing before message field
-        if field_type == "message":
-            y -= (field_height * 2)
-            can.drawString(x, y + (field_height * 3) - 4, label + ":")
-        else:
-            can.drawString(x, y + label_offset, label + ":")
-
-        if field_type in ["select", "checkboxes"]:
+        x = left_margin
+        for field, field_width, idx in row_fields:
+            label = field.get("label", f"Field {idx+1}")
+            field_type = field.get("dataType", field.get("type", "text")).lower()
             options = field.get("options", [])
-            option_spacing = 18
-            for j, option in enumerate(options):
-                option_y = y - (j * option_spacing)
-                can.acroForm.checkbox(
-                    name=f'field_{i}_option_{j}',
-                    tooltip=option,
+            height = field_height * 3 if field_type == "message" else field_height
+            font_size = 9
+            can.setFont("Helvetica", font_size)
+
+            wrapped_lines = wrap_label(label + ":", field_width, font_size)
+            for line_idx, line in enumerate(wrapped_lines):
+                can.drawString(x, y + (label_offset + (len(wrapped_lines) - line_idx - 1) * 10), line)
+
+            if field_type in ["select", "checkboxes"]:
+                option_spacing = 18
+                for j, option in enumerate(options):
+                    option_y = y - (j * option_spacing)
+                    can.acroForm.checkbox(
+                        name=f'field_{idx}_option_{j}',
+                        tooltip=option,
+                        x=x,
+                        y=option_y,
+                        buttonStyle='check',
+                        borderStyle='solid',
+                        forceBorder=True,
+                        size=12,
+                    )
+                    can.drawString(x + 18, option_y + 2, option)
+            else:
+                can.acroForm.textfield(
+                    name=f'field_{idx}',
+                    tooltip=label,
                     x=x,
-                    y=option_y,
-                    buttonStyle='check',
-                    borderStyle='solid',
+                    y=y - 18,
+                    width=field_width - 5,
+                    height=height,
+                    borderStyle='underlined',
                     forceBorder=True,
-                    size=12,
                 )
-                can.drawString(x + 18, option_y + 2, option)
-            y -= (len(options) - 1) * option_spacing
 
-        else:
-            can.acroForm.textfield(
-                name=f'field_{i}',
-                tooltip=label,
-                x=x,
-                y=y - 18,
-                width=field_width - 5,
-                height=height,
-                borderStyle='underlined',
-                forceBorder=True,
-            )
+            x += field_width
 
-        x += field_width
-        current_row_width += field_width
+        y -= (max_field_height + spacing_y)
 
     finalize_page()
 
